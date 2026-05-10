@@ -49,3 +49,5 @@ build/
 
 __pycache__/
 *.pyc
+
+git_key

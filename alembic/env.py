@@ -6,7 +6,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from app.db.base import Base
-from app.models import refresh_token, user
+from app.models import refresh_token, user, audit_log
 
 config = context.config
 
