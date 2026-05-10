@@ -1,0 +1,51 @@
+# Entorno Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Secretos y configuración local
+.env
+.env.local
+.env.*.local
+
+# Base de datos
+*.db
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Distribución Python
+dist/
+build/
+*.egg-info/
+
+# Mypy
+.mypy_cache/
+
+# Ruff / Linters
+.ruff_cache/
+
+__pycache__/
+*.pyc
