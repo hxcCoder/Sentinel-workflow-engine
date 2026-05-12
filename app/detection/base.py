@@ -7,23 +7,27 @@ from typing import Any, Mapping
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.audit_log import AuditSeverity
+from app.models.alert import AlertSeverity
+
 
 # ── Base de Detección ─────────────────────────────────────────────
+
 @dataclass(slots=True)
 class DetectionFinding:
     rule_id: str
     title: str
-    severity: AuditSeverity
+    severity: AlertSeverity
     matched_at: datetime
     evidence: Mapping[str, Any]
 
+
 # ── Regla de Detección ─────────────────────────────────────────────
+
 class DetectionRule(ABC):
     rule_id: str
     title: str
     description: str
-    severity: AuditSeverity
+    severity: AlertSeverity
 
     @abstractmethod
     async def evaluate(
@@ -33,7 +37,6 @@ class DetectionRule(ABC):
         end_time: datetime,
     ) -> list[DetectionFinding]:
         """
-        Evaluate the rule against the database
-        inside a time window.
+        Evalúa la regla dentro de una ventana temporal.
         """
         ...

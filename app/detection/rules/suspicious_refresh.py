@@ -9,19 +9,23 @@ from app.detection.base import (
     DetectionFinding,
     DetectionRule,
 )
-from app.models.audit_log import AuditLog, AuditSeverity
+from app.models.alert import AlertSeverity
+from app.models.audit_log import AuditLog
 
 
 class SuspiciousRefreshRule(DetectionRule):
     rule_id = "AUTH_002"
+
     title = "Actividad sospechosa de refresh tokens"
+
     description = (
-        "Detecta múltiples eventos auth.refresh "
-        "desde una misma IP y reporta "
-        "la cantidad de cuentas afectadas"
+        "Detecta múltiples eventos "
+        "auth.refresh desde una misma IP "
+        "y reporta la cantidad de cuentas "
+        "afectadas"
     )
 
-    severity = AuditSeverity.warning
+    severity = AlertSeverity.medium
 
     def __init__(
         self,
@@ -52,12 +56,22 @@ class SuspiciousRefreshRule(DetectionRule):
                 ),
             )
             .where(
-                AuditLog.event_type == "auth.refresh",
-                AuditLog.created_at >= start_time,
-                AuditLog.created_at <= end_time,
-                AuditLog.ip_address.is_not(None),
+                AuditLog.event_type
+                == "auth.refresh",
+
+                AuditLog.created_at
+                >= start_time,
+
+                AuditLog.created_at
+                <= end_time,
+
+                AuditLog.ip_address.is_not(
+                    None
+                ),
             )
-            .group_by(AuditLog.ip_address)
+            .group_by(
+                AuditLog.ip_address
+            )
             .having(
                 func.count(AuditLog.id)
                 >= self.threshold
@@ -66,16 +80,22 @@ class SuspiciousRefreshRule(DetectionRule):
 
         result = await db.execute(stmt)
 
-        findings: list[DetectionFinding] = []
-        matched_at = datetime.now(timezone.utc)
+        findings: list[
+            DetectionFinding
+        ] = []
+
+        matched_at = datetime.now(
+            timezone.utc
+        )
 
         for (
             ip_address,
             refresh_count,
             distinct_users,
         ) in result.all():
+
             severity = (
-                AuditSeverity.critical
+                AlertSeverity.critical
                 if refresh_count
                 >= self.critical_threshold
                 else self.severity
@@ -94,7 +114,9 @@ class SuspiciousRefreshRule(DetectionRule):
                         "window_start": start_time.isoformat(),
                         "window_end": end_time.isoformat(),
                         "threshold": self.threshold,
-                        "critical_threshold": self.critical_threshold,
+                        "critical_threshold": (
+                            self.critical_threshold
+                        ),
                         "is_multi_user_attack": (
                             distinct_users > 1
                         ),
