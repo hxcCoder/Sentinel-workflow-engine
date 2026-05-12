@@ -10,24 +10,33 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.alert import AlertSeverity
 
 
-# ── Base de Detección ─────────────────────────────────────────────
+# ── Base de Detección ──────────────────────────────────
 
 @dataclass(slots=True)
 class DetectionFinding:
     rule_id: str
     title: str
+    description: str
+
     severity: AlertSeverity
+
     matched_at: datetime
+
+    source: str
+
     evidence: Mapping[str, Any]
 
 
-# ── Regla de Detección ─────────────────────────────────────────────
+# ── Regla de Detección ─────────────────────────────────
 
 class DetectionRule(ABC):
     rule_id: str
     title: str
     description: str
+
     severity: AlertSeverity
+
+    source: str = "sentinellab"
 
     @abstractmethod
     async def evaluate(

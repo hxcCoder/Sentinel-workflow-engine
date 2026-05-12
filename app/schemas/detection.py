@@ -1,16 +1,27 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Mapping
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
-from app.models.audit_log import AuditSeverity
+from app.models.alert import AlertSeverity
 
 
 class DetectionFindingPublic(BaseModel):
     rule_id: str
+
     title: str
-    severity: AuditSeverity
+    description: str
+
+    severity: AlertSeverity
+
     matched_at: datetime
-    evidence: dict[str, Any]
+
+    source: str
+
+    evidence: Mapping[str, Any]
+
+    model_config = ConfigDict(
+        from_attributes=True
+    )

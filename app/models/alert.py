@@ -3,7 +3,7 @@ from __future__ import annotations
 import enum
 import uuid
 from datetime import datetime, timezone
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
     DateTime,
@@ -15,19 +15,23 @@ from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import (
     Mapped,
     mapped_column,
+    relationship,
 )
 
 from app.db.base import Base
 
+if TYPE_CHECKING:
+    from app.models.alert_event import AlertEvent
 
-class AlertSeverity(enum.Enum):
+
+class AlertSeverity(str, enum.Enum):
     low = "low"
     medium = "medium"
     high = "high"
     critical = "critical"
 
 
-class AlertStatus(enum.Enum):
+class AlertStatus(str, enum.Enum):
     open = "open"
     in_progress = "in_progress"
     resolved = "resolved"
@@ -37,13 +41,15 @@ class AlertStatus(enum.Enum):
 class Alert(Base):
     __tablename__ = "alerts"
 
+    # ── Identidad ──────────────────────────────────────────
+
     id: Mapped[str] = mapped_column(
         String(36),
         primary_key=True,
         default=lambda: str(uuid.uuid4()),
     )
 
-    # ── Correlación ─────────────────────────────────────────
+    # ── Correlación ────────────────────────────────────────
 
     fingerprint: Mapped[str] = mapped_column(
         String(64),
@@ -74,7 +80,7 @@ class Alert(Base):
         nullable=True,
     )
 
-    # ── Severidad ───────────────────────────────────────────
+    # ── Severidad ──────────────────────────────────────────
 
     original_severity: Mapped[AlertSeverity] = mapped_column(
         SAEnum(AlertSeverity),
@@ -94,7 +100,7 @@ class Alert(Base):
         index=True,
     )
 
-    # ── Timeline ────────────────────────────────────────────
+    # ── Timeline / Estado ──────────────────────────────────
 
     event_count: Mapped[int] = mapped_column(
         Integer,
@@ -122,7 +128,7 @@ class Alert(Base):
         nullable=True,
     )
 
-    # ── Evidencia ───────────────────────────────────────────
+    # ── Evidencia ──────────────────────────────────────────
 
     evidence: Mapped[dict[str, Any] | None] = mapped_column(
         JSON,
@@ -134,7 +140,7 @@ class Alert(Base):
         nullable=True,
     )
 
-    # ── Threat Intel / MITRE ────────────────────────────────
+    # ── Threat Intel / MITRE ───────────────────────────────
 
     tags: Mapped[list[str] | None] = mapped_column(
         JSON,
@@ -151,7 +157,7 @@ class Alert(Base):
         nullable=True,
     )
 
-    # ── Workflow SOC ────────────────────────────────────────
+    # ── Workflow SOC ───────────────────────────────────────
 
     assigned_to: Mapped[str | None] = mapped_column(
         String(36),
@@ -163,7 +169,7 @@ class Alert(Base):
         nullable=True,
     )
 
-    # ── Auditoría ───────────────────────────────────────────
+    # ── Auditoría ──────────────────────────────────────────
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -176,4 +182,13 @@ class Alert(Base):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
+    )
+
+    # ── Relationships ──────────────────────────────────────
+
+    timeline: Mapped[list["AlertEvent"]] = relationship(
+        "AlertEvent",
+        back_populates="alert",
+        cascade="all, delete-orphan",
+        order_by="AlertEvent.created_at",
     )
