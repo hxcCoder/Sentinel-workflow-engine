@@ -11,6 +11,11 @@ from app.api.v1.routes import (
 
 from app.core.config import settings
 from app.core.logging import setup_logging
+from app.scheduler.scheduler import (
+    get_scheduler_status,
+    shutdown_scheduler,
+    start_scheduler,
+)
 
 setup_logging()
 
@@ -22,9 +27,11 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("SentinelLab starting up")
+    start_scheduler()
 
     yield
 
+    shutdown_scheduler()
     logger.info("SentinelLab shutting down")
 
 
@@ -64,4 +71,5 @@ async def health_check():
         "status": "ok",
         "app": settings.app_name,
         "version": settings.app_version,
+        "scheduler": get_scheduler_status(),
     }

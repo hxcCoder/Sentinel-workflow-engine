@@ -12,6 +12,9 @@ from app.detection.engine import DetectionEngine
 from app.detection.rules.auth_bruteforce import (
     AuthBruteforceRule,
 )
+from app.detection.rules.suspicious_refresh import (
+    SuspiciousRefreshRule,
+)
 from app.models.user import User
 from app.schemas.detection import (
     DetectionFindingPublic,
@@ -25,6 +28,7 @@ router = APIRouter(
 _engine = DetectionEngine(
     rules=[
         AuthBruteforceRule(),
+        SuspiciousRefreshRule(),
     ]
 )
 

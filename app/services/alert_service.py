@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 from datetime import datetime, timezone
 
-from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.detection.base import DetectionFinding
@@ -18,7 +17,8 @@ from app.models.alert_event import (
     AlertEventType,
 )
 
-from app.schemas.alert import AlertUpdate
+from app.repositories.alert_repository import AlertRepository
+from app.schemas.alert import AlertFilters, AlertUpdate
 
 from app.services.alert_event_service import (
     AlertEventService,
@@ -29,6 +29,7 @@ class AlertService:
 
     def __init__(self, db: AsyncSession):
         self.db = db
+        self.repository = AlertRepository(db)
 
     # ── Fingerprint ─────────────────────────────────────────
 
@@ -76,13 +77,9 @@ class AlertService:
 
         now = datetime.now(timezone.utc)
 
-        result = await self.db.execute(
-            select(Alert).where(
-                Alert.fingerprint == fingerprint
-            )
+        existing = await self.repository.get_by_fingerprint(
+            fingerprint
         )
-
-        existing = result.scalar_one_or_none()
 
         # ── Existing alert ──────────────────────────────────
 
@@ -180,11 +177,7 @@ class AlertService:
         self,
         alert_id: str,
     ) -> Alert | None:
-        result = await self.db.execute(
-            select(Alert).where(Alert.id == alert_id)
-        )
-
-        return result.scalar_one_or_none()
+        return await self.repository.get_by_id(alert_id)
 
     # ── Query multiple ──────────────────────────────────────
 
@@ -197,35 +190,22 @@ class AlertService:
         limit: int = 50,
         offset: int = 0,
     ) -> list[Alert]:
-        query = select(Alert)
-
-        conditions = []
-
-        if status:
-            conditions.append(Alert.status == status)
-
-        if severity:
-            conditions.append(Alert.severity == severity)
-
-        if rule_id:
-            conditions.append(Alert.rule_id == rule_id)
-
-        if source:
-            conditions.append(Alert.source == source)
-
-        if conditions:
-            query = query.where(and_(*conditions))
-
-        query = (
-            query
-            .order_by(Alert.last_seen.desc())
-            .limit(limit)
-            .offset(offset)
+        filters = AlertFilters(
+            status=status,
+            severity=severity,
+            rule_id=rule_id,
+            source=source,
+            limit=limit,
+            offset=offset,
         )
 
-        result = await self.db.execute(query)
+        return await self.list_alerts(filters)
 
-        return list(result.scalars().all())
+    async def list_alerts(
+        self,
+        filters: AlertFilters,
+    ) -> list[Alert]:
+        return await self.repository.list_with_filters(filters)
 
     # ── Update generic ──────────────────────────────────────
 
@@ -251,6 +231,44 @@ class AlertService:
             AlertStatus.false_positive,
         ):
             alert.resolved_at = now
+
+        alert.updated_at = now
+
+        await AlertEventService(self.db).record(
+            alert=alert,
+            event_type=AlertEventType.updated,
+            message="Alert updated manually",
+        )
+
+        await self.db.commit()
+
+        await self.db.refresh(alert)
+
+        return alert
+
+    async def update_alert(
+        self,
+        alert: Alert,
+        data: AlertUpdate,
+    ) -> Alert:
+        now = datetime.now(timezone.utc)
+
+        updates = data.model_dump(exclude_none=True)
+
+        for field, value in updates.items():
+            setattr(alert, field, value)
+
+        if data.status in (
+            AlertStatus.resolved,
+            AlertStatus.false_positive,
+        ):
+            alert.resolved_at = now
+
+        if data.status in (
+            AlertStatus.open,
+            AlertStatus.in_progress,
+        ):
+            alert.resolved_at = None
 
         alert.updated_at = now
 
